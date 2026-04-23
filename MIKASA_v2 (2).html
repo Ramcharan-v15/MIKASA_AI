@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIKASA — AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#030a14;color:#e0f4ff;font-family:'Rajdhani',sans-serif;height:100vh;overflow:hidden;}
+#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+.scan-line{position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00c8ff,transparent);animation:scan 5s linear infinite;z-index:5;opacity:0.3;pointer-events:none;}
+@keyframes scan{from{transform:translateY(0)}to{transform:translateY(100vh)}}
+#app{position:relative;z-index:1;display:grid;grid-template-columns:220px 1fr 200px;grid-template-rows:60px 1fr 80px;height:100vh;}
+#topbar{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid rgba(0,200,255,0.2);background:rgba(3,10,20,0.92);backdrop-filter:blur(10px);}
+#logo{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;letter-spacing:6px;color:#00c8ff;text-shadow:0 0 20px rgba(0,200,255,0.6);}
+#status-dot{width:8px;height:8px;border-radius:50%;background:#00ff88;box-shadow:0 0 10px #00ff88;animation:pdot 2s infinite;}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+#status-txt{font-size:11px;letter-spacing:3px;color:#00ff88;text-transform:uppercase;}
+#clock{margin-left:auto;font-family:'Orbitron',monospace;font-size:13px;color:rgba(0,200,255,0.7);letter-spacing:2px;}
+#sidebar{border-right:1px solid rgba(0,200,255,0.15);background:rgba(0,10,25,0.85);padding:14px 10px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
+.slabel{font-size:9px;letter-spacing:3px;color:rgba(0,200,255,0.4);text-transform:uppercase;padding:6px 8px 2px;}
+.sbtn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:5px;cursor:pointer;font-size:13px;color:rgba(200,230,255,0.65);border:1px solid transparent;background:transparent;transition:all .2s;font-family:'Rajdhani',sans-serif;letter-spacing:1px;width:100%;text-align:left;}
+.sbtn:hover,.sbtn.active{background:rgba(0,200,255,0.08);border-color:rgba(0,200,255,0.28);color:#00c8ff;}
+.sicon{font-size:13px;width:18px;text-align:center;}
+#main{display:flex;flex-direction:column;overflow:hidden;}
+#avatar-area{display:flex;flex-direction:column;align-items:center;padding:14px 0 6px;position:relative;}
+#avatar-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:130px;height:130px;}
+#o1{position:absolute;width:104px;height:104px;border-radius:50%;border:1px solid rgba(0,200,255,0.25);border-top-color:#00c8ff;animation:orbit 3s linear infinite;}
+#o2{position:absolute;width:124px;height:124px;border-radius:50%;border:1px solid rgba(200,0,255,0.12);border-bottom-color:rgba(200,0,255,0.45);animation:orbit 5s linear infinite reverse;}
+@keyframes orbit{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+#aring{width:82px;height:82px;border-radius:50%;border:2px solid rgba(0,200,255,0.45);display:flex;align-items:center;justify-content:center;animation:glow 3s ease-in-out infinite;}
+@keyframes glow{0%,100%{box-shadow:0 0 20px rgba(0,200,255,.3)}50%{box-shadow:0 0 40px rgba(0,200,255,.7)}}
+#aimg{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#001a33,#002a55);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:24px;color:#00c8ff;font-weight:900;}
+#aname{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:4px;color:rgba(0,200,255,0.55);margin-top:6px;}
+#chat{flex:1;overflow-y:auto;padding:8px 18px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:rgba(0,200,255,.2) transparent;}
+.msg{max-width:86%;padding:10px 14px;border-radius:8px;font-size:13.5px;line-height:1.55;animation:min .3s ease;}
+@keyframes min{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;background:rgba(0,100,180,.22);border:1px solid rgba(0,150,255,.28);color:#b0d8ff;}
+.msg.ai{align-self:flex-start;background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.18);color:#d0eeff;}
+.mlabel{font-size:9px;letter-spacing:2px;color:#00c8ff;margin-bottom:4px;font-family:'Orbitron',monospace;}
+#ibar{grid-column:2;display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(0,200,255,.13);background:rgba(0,6,18,.92);}
+#minput{flex:1;background:rgba(0,18,38,.8);border:1px solid rgba(0,200,255,.2);border-radius:6px;color:#e0f4ff;font-family:'Rajdhani',sans-serif;font-size:14px;padding:10px 14px;outline:none;letter-spacing:.5px;}
+#minput:focus{border-color:rgba(0,200,255,.5);}
+#minput::placeholder{color:rgba(0,200,255,.28);}
+.ibtn{width:40px;height:40px;border-radius:6px;border:1px solid rgba(0,200,255,.22);background:rgba(0,28,58,.6);color:rgba(0,200,255,.7);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;}
+.ibtn:hover{background:rgba(0,200,255,.14);color:#00c8ff;}
+.ibtn.listening{background:rgba(255,50,100,.18);border-color:rgba(255,50,100,.5);color:#ff6680;animation:pbtn 1s infinite;}
+@keyframes pbtn{0%,100%{box-shadow:0 0 0 0 rgba(255,50,100,.4)}50%{box-shadow:0 0 0 8px rgba(255,50,100,0)}}
+#rpanel{border-left:1px solid rgba(0,200,255,.13);background:rgba(0,6,18,.82);padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
+.plabel{font-size:9px;letter-spacing:3px;color:rgba(0,200,255,.4);text-transform:uppercase;}
+.titem{padding:8px 10px;background:rgba(0,200,255,.04);border:1px solid rgba(0,200,255,.1);border-radius:5px;font-size:11px;color:rgba(200,230,255,.65);display:flex;flex-direction:column;gap:3px;}
+.ttype{font-size:9px;letter-spacing:2px;color:rgba(0,200,255,.45);}
+#vbar{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:20px;padding:0 20px;border-top:1px solid rgba(0,200,255,.1);background:rgba(0,4,14,.95);}
+#vc{height:40px;flex:1;max-width:400px;}
+#vstatus{font-size:11px;letter-spacing:3px;color:rgba(0,200,255,.5);text-transform:uppercase;min-width:120px;text-align:center;}
+#keybanner{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(18,5,0,.97);border:1px solid rgba(255,150,0,.4);border-radius:8px;padding:12px 18px;display:flex;align-items:center;gap:10px;z-index:100;font-size:13px;color:rgba(255,200,100,.9);max-width:520px;width:92%;}
+#kinput{flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(255,150,0,.3);border-radius:4px;color:#ffcc66;font-family:'Rajdhani',sans-serif;font-size:13px;padding:6px 10px;outline:none;}
+#kbtn{padding:6px 14px;background:rgba(255,150,0,.18);border:1px solid rgba(255,150,0,.4);border-radius:4px;color:#ffcc66;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:1px;white-space:nowrap;}
+#kbtn:hover{background:rgba(255,150,0,.32);}
+#klink{font-size:11px;color:rgba(255,180,0,.6);white-space:nowrap;cursor:pointer;text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="scan-line"></div>
+
+<!-- API KEY BANNER -->
+<div id="keybanner">
+  <span>⚡</span>
+  <span style="white-space:nowrap;font-size:11px;letter-spacing:1px;">GROQ KEY:</span>
+  <input id="kinput" type="password" placeholder="gsk_... paste your free Groq API key here" />
+  <button id="kbtn" onclick="saveKey()">LINK</button>
+  <span id="klink" onclick="window.open('https://console.groq.com','_blank')">Get Free Key ↗</span>
+</div>
+
+<div id="app">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div id="logo">MIKASA</div>
+    <div id="status-dot"></div>
+    <div id="status-txt">Online</div>
+    <div id="clock"></div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="slabel">Navigation</div>
+    <button class="sbtn active" onclick="setMode('chat',this)"><span class="sicon">◈</span>Neural Chat</button>
+    <button class="sbtn" onclick="setMode('web',this)"><span class="sicon">◉</span>Open Website</button>
+    <button class="sbtn" onclick="setMode('ppt',this)"><span class="sicon">▦</span>Build PPT</button>
+    <button class="sbtn" onclick="setMode('status',this)"><span class="sicon">≋</span>System Status</button>
+
+    <div class="slabel">Quick Launch</div>
+    <button class="sbtn" onclick="quickCmd('open youtube.com')"><span class="sicon">▶</span>YouTube</button>
+    <button class="sbtn" onclick="quickCmd('open gmail.com')"><span class="sicon">✉</span>Gmail</button>
+    <button class="sbtn" onclick="quickCmd('open google.com')"><span class="sicon">⊕</span>Google</button>
+    <button class="sbtn" onclick="quickCmd('open maps.google.com')"><span class="sicon">◎</span>Maps</button>
+    <button class="sbtn" onclick="quickCmd('open github.com')"><span class="sicon">⌥</span>GitHub</button>
+    <button class="sbtn" onclick="quickCmd('open spotify.com')"><span class="sicon">♪</span>Spotify</button>
+    <button class="sbtn" onclick="quickCmd('open web.whatsapp.com')"><span class="sicon">◌</span>WhatsApp</button>
+    <button class="sbtn" onclick="quickCmd('what is the time and date today')"><span class="sicon">◷</span>Time & Date</button>
+    <button class="sbtn" onclick="quickCmd('tell me a joke')"><span class="sicon">☺</span>Entertain Me</button>
+
+    <div style="flex:1"></div>
+    <button class="sbtn" onclick="clearChat()" style="color:rgba(255,80,80,.55)"><span class="sicon">✕</span>Clear Chat</button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="avatar-area">
+      <div id="avatar-wrap">
+        <div id="o2"></div>
+        <div id="o1"></div>
+        <div id="aring"><div id="aimg">M</div></div>
+      </div>
+      <div id="aname">MIKASA v2.0</div>
+    </div>
+
+    <div id="chat">
+      <div class="msg ai">
+        <div class="mlabel">MIKASA</div>
+        Hello! I am <strong>MIKASA</strong> — your JARVIS-inspired AI assistant.<br><br>
+        To activate my AI brain, paste your free <strong>Groq API key</strong> in the banner above. Get one free at <strong>console.groq.com</strong> (takes 30 seconds, no credit card).<br><br>
+        I can: answer questions · open websites · build PowerPoint presentations · tell you time & date · entertain you<br><br>
+        Type below or click 🎤 to speak!
+      </div>
+    </div>
+
+    <div id="ibar">
+      <input id="minput" placeholder="Ask Mikasa anything... or click 🎤 for voice" onkeydown="if(event.key==='Enter')sendMsg()" />
+      <button class="ibtn" id="vbtn" onclick="toggleVoice()" title="Voice">🎤</button>
+      <button class="ibtn" onclick="sendMsg()" title="Send">➤</button>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="rpanel">
+    <div class="plabel">Recent Tasks</div>
+    <div id="tlist">
+      <div style="font-size:11px;color:rgba(0,200,255,.3);text-align:center;margin-top:24px;">Tasks will appear here</div>
+    </div>
+  </div>
+
+  <!-- VOICE BAR -->
+  <div id="vbar">
+    <div id="vstatus">Ready</div>
+    <canvas id="vc"></canvas>
+    <div style="font-size:10px;letter-spacing:2px;color:rgba(0,200,255,.3);">VOICE ENGINE v2</div>
+  </div>
+</div>
+
+<script>
+// ---- STATE ----
+let apiKey = '';
+let isListening = false;
+let recognition = null;
+let audioCtx = null, analyser = null, dataArray = null;
+
+// Try load saved key
+try { apiKey = localStorage.getItem('mikasa_key') || ''; } catch(e){}
+if(apiKey) { document.getElementById('keybanner').style.display='none'; }
+
+// ---- SAVE KEY ----
+function saveKey() {
+  const k = (document.getElementById('kinput').value||'').trim();
+  if(!k) return;
+  apiKey = k;
+  try { localStorage.setItem('mikasa_key', k); } catch(e){}
+  document.getElementById('keybanner').style.display='none';
+  addMsg("Neural network connected! API key linked successfully. How can I help you today?", 'ai');
+  speak("Neural network connected. I am fully operational. How can I assist you?");
+}
+
+// ---- CLOCK ----
+function tick() {
+  const n = new Date();
+  document.getElementById('clock').textContent = n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(tick, 1000); tick();
+
+// ---- BG CANVAS ----
+const bgC = document.getElementById('bg-canvas');
+const bgX = bgC.getContext('2d');
+let pts = [];
+
+function resizeBg() {
+  bgC.width = window.innerWidth; bgC.height = window.innerHeight;
+  pts = Array.from({length: Math.floor(bgC.width*bgC.height/10000)}, () => ({
+    x: Math.random()*bgC.width, y: Math.random()*bgC.height,
+    r: Math.random()*1.4+0.3, vx:(Math.random()-.5)*.25, vy:(Math.random()-.5)*.25,
+    a: Math.random()*.45+.1
+  }));
+}
+function animBg() {
+  bgX.fillStyle='rgba(3,10,20,0.18)'; bgX.fillRect(0,0,bgC.width,bgC.height);
+  bgX.strokeStyle='rgba(0,200,255,0.03)'; bgX.lineWidth=.5;
+  for(let x=0;x<bgC.width;x+=60){bgX.beginPath();bgX.moveTo(x,0);bgX.lineTo(x,bgC.height);bgX.stroke();}
+  for(let y=0;y<bgC.height;y+=60){bgX.beginPath();bgX.moveTo(0,y);bgX.lineTo(bgC.width,y);bgX.stroke();}
+  pts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=bgC.width; if(p.x>bgC.width)p.x=0;
+    if(p.y<0)p.y=bgC.height; if(p.y>bgC.height)p.y=0;
+    bgX.beginPath(); bgX.arc(p.x,p.y,p.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(0,200,255,${p.a})`; bgX.fill();
+  });
+  const t=Date.now()/1000;
+  [[.3,.4],[.7,.6],[.5,.3]].forEach(([fx,fy],i)=>{
+    const cx=bgC.width*fx+Math.sin(t*.3+i)*45, cy=bgC.height*fy+Math.cos(t*.2+i)*28;
+    const g=bgX.createRadialGradient(cx,cy,0,cx,cy,180);
+    g.addColorStop(0,i===1?'rgba(180,0,255,0.04)':'rgba(0,180,255,0.05)');
+    g.addColorStop(1,'transparent');
+    bgX.fillStyle=g; bgX.beginPath(); bgX.arc(cx,cy,180,0,Math.PI*2); bgX.fill();
+  });
+  requestAnimationFrame(animBg);
+}
+window.addEventListener('resize',resizeBg); resizeBg(); animBg();
+
+// ---- VOICE WAVEFORM ----
+const vc = document.getElementById('vc'), vx = vc.getContext('2d');
+vc.width=380; vc.height=40;
+function drawWave() {
+  vx.clearRect(0,0,vc.width,vc.height);
+  const mid=vc.height/2;
+  if(analyser&&dataArray){
+    analyser.getByteTimeDomainData(dataArray);
+    vx.beginPath(); vx.strokeStyle='#00c8ff'; vx.lineWidth=1.5;
+    dataArray.forEach((v,i)=>{
+      const y=((v/128)-1)*mid*1.5+mid, x=i*(vc.width/dataArray.length);
+      i===0?vx.moveTo(x,y):vx.lineTo(x,y);
+    }); vx.stroke();
+  } else {
+    const t=Date.now()/600;
+    vx.beginPath(); vx.strokeStyle='rgba(0,200,255,0.28)'; vx.lineWidth=1;
+    for(let x=0;x<vc.width;x++){
+      const y=mid+Math.sin(x*.045+t)*4+Math.sin(x*.09+t*1.4)*2;
+      x===0?vx.moveTo(x,y):vx.lineTo(x,y);
+    } vx.stroke();
+  }
+  requestAnimationFrame(drawWave);
+}
+drawWave();
+
+// ---- CHAT ----
+function addMsg(text, role) {
+  const d = document.createElement('div');
+  d.className='msg '+role;
+  if(role==='ai') d.innerHTML='<div class="mlabel">MIKASA</div>'+text;
+  else d.textContent=text;
+  document.getElementById('chat').appendChild(d);
+  d.scrollIntoView({behavior:'smooth'});
+}
+
+function addTask(type, detail) {
+  const tl = document.getElementById('tlist');
+  const ph = tl.querySelector('div[style]');
+  if(ph) ph.remove();
+  const it = document.createElement('div'); it.className='titem';
+  it.innerHTML=`<div class="ttype">${type}</div><div>${detail.substring(0,32)}${detail.length>32?'...':''}</div>`;
+  tl.insertBefore(it, tl.firstChild);
+  if(tl.children.length>9) tl.removeChild(tl.lastChild);
+}
+
+// ---- SEND ----
+async function sendMsg() {
+  const inp = document.getElementById('minput');
+  const text = (inp.value||'').trim(); if(!text) return;
+  inp.value=''; addMsg(text,'user');
+  // Handle commands FIRST synchronously (window.open must be in sync call stack)
+  if(handleCommand(text.toLowerCase(), text)) return;
+  // Then check API key for AI responses
+  if(!apiKey){ addMsg("Please link your free Groq API key in the banner above. Click \'Get Free Key\' to sign up at console.groq.com — it's completely free!",'ai'); speak("Please link your API key first."); return; }
+  await callGroq(text);
+}
+
+// ---- COMMAND HANDLER ----
+function handleCommand(lower, original) {
+  // open website - synchronous open to avoid popup block
+  const siteMap={youtube:'https://youtube.com',google:'https://google.com',gmail:'https://gmail.com',maps:'https://maps.google.com','google maps':'https://maps.google.com',twitter:'https://twitter.com',instagram:'https://instagram.com',facebook:'https://facebook.com',whatsapp:'https://web.whatsapp.com',github:'https://github.com',linkedin:'https://linkedin.com',wikipedia:'https://en.wikipedia.org',reddit:'https://reddit.com',netflix:'https://netflix.com',amazon:'https://amazon.in',spotify:'https://open.spotify.com',notion:'https://notion.so',figma:'https://figma.com',canva:'https://canva.com',stackoverflow:'https://stackoverflow.com',chatgpt:'https://chat.openai.com',discord:'https://discord.com',twitch:'https://twitch.tv',pinterest:'https://pinterest.com'};
+  const openMatch = lower.match(/^(?:please\s+)?open\s+(.+)$/i);
+  if(openMatch){
+    let target = openMatch[1].trim().replace(/[.!?]+$/,'').toLowerCase();
+    let url = siteMap[target];
+    if(!url && /[\w-]+\.\w{2,}/.test(target)){
+      url = target.startsWith('http') ? target : 'https://'+target;
+    }
+    if(url){
+      const win = window.open(url,'_blank');
+      if(!win){ addMsg('Popup was blocked! Please click Allow Popups in your browser address bar, then try again. Or <a href="'+url+'" target="_blank" style="color:#00c8ff">click here to open</a>.','ai'); }
+      else { addMsg('Opening <strong>'+url.replace('https://','').replace('www.','')+'</strong> now!','ai'); }
+      speak('Opening '+target);
+      addTask('WEB',url.replace('https://','').replace('www.',''));
+      return true;
+    }
+  }
+
+  // PPT
+  if(/(create|make|build|generate).*(ppt|presentation|slides?)/i.test(original)||(/(ppt|presentation|slides?).*(on|about)/i.test(original))){
+    const topic=original.replace(/create|make|build|generate|a|an|ppt|presentation|slides?|on|about/gi,'').trim()||'My Topic';
+    buildPPT(topic); return true;
+  }
+
+  // system status
+  if(/system\s*(status|info|check)/i.test(original)){
+    const info=`<strong>System Status</strong><br>Platform: ${navigator.platform}<br>Browser: ${navigator.appName}<br>Language: ${navigator.language}<br>Online: ${navigator.onLine?'Yes ✓':'No ✗'}<br>Screen: ${screen.width}×${screen.height}<br>Time: ${new Date().toLocaleString()}`;
+    addMsg(info,'ai'); speak("All systems operational. Check the chat for your system status report."); addTask('STATUS','System info'); return true;
+  }
+
+  // time / date
+  if(/\b(time|date|day|today)\b/i.test(original)){
+    const now=new Date();
+    const tr=`Time: <strong>${now.toLocaleTimeString()}</strong><br>Date: <strong>${now.toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</strong>`;
+    addMsg(tr,'ai'); speak(`It is ${now.toLocaleTimeString()}. Today is ${now.toLocaleDateString('en-IN',{weekday:'long',month:'long',day:'numeric'})}`); addTask('INFO','Time & Date'); return true;
+  }
+
+  // calculator
+  const mathMatch=original.match(/(?:calculate|what(?:'s| is)?)\s+([\d\s+\-*\/().^%]+)/i)||original.match(/^([\d\s+\-*\/().]+[+\-*\/]([\d\s+\-*\/().]+))$/);
+  if(mathMatch){
+    try{const expr=mathMatch[1].replace(/\^/,'**'); const result=eval(expr); addMsg(`Result: <strong>${result}</strong>`,'ai'); speak(`The answer is ${result}`); addTask('CALC',`${expr} = ${result}`); return true;}catch(e){}
+  }
+
+  return false;
+}
+
+// ---- GROQ API ----
+async function callGroq(text) {
+  addTask('AI', text);
+  const typing=document.createElement('div'); typing.className='msg ai';
+  typing.innerHTML='<div class="mlabel">MIKASA</div><span style="color:rgba(0,200,255,.45);animation:pdot 1s infinite">Processing neural request...</span>';
+  document.getElementById('chat').appendChild(typing); typing.scrollIntoView({behavior:'smooth'});
+  try{
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[
+        {role:'system',content:'You are MIKASA, a JARVIS-inspired AI assistant. Be intelligent, helpful, concise, and slightly formal. Keep responses under 160 words unless asked for more detail. Do not use markdown headers. You are running as a web-based personal assistant for a student in India.'},
+        {role:'user',content:text}
+      ],max_tokens:320})
+    });
+    const data=await r.json();
+    if(data.choices&&data.choices[0]){
+      const reply=data.choices[0].message.content;
+      typing.innerHTML='<div class="mlabel">MIKASA</div>'+reply.replace(/\n/g,'<br>');
+      speak(reply.replace(/<[^>]+>/g,'').substring(0,300));
+    } else {
+      const errMsg=data.error?.message||'Check your API key and try again.';
+      typing.innerHTML='<div class="mlabel">MIKASA</div>Error: '+errMsg;
+      speak("I encountered an error. Please check your API key.");
+    }
+  }catch(e){
+    typing.innerHTML='<div class="mlabel">MIKASA</div>Network error. Make sure your API key is correct.';
+    speak("Network error. Please try again.");
+  }
+  typing.scrollIntoView({behavior:'smooth'});
+}
+
+// ---- PPT BUILDER ----
+async function buildPPT(topic) {
+  addMsg(`Generating PowerPoint presentation on: <strong>"${topic}"</strong>...`,'ai');
+  speak(`Building your presentation on ${topic}`); addTask('PPT',topic);
+  if(!apiKey){addMsg("Link your Groq API key first.",'ai');return;}
+  const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+    body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:`Create a 6-slide presentation outline on "${topic}". Format EXACTLY as shown:
+SLIDE 1: [Catchy Title]
+- Key point one
+- Key point two
+- Key point three
+- Key point four
+
+SLIDE 2: [Section Title]
+... (continue for all 6 slides)`}],max_tokens:700})
+  });
+  const data=await r.json();
+  const content=data.choices?.[0]?.message?.content||'';
+  const slides=content.split(/SLIDE\s+\d+:\s*/i).filter(s=>s.trim());
+  if(!slides.length){addMsg("Could not generate slides. Please try again.",'ai');return;}
+
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${topic}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@300;400;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080818;font-family:'Rajdhani',sans-serif;color:#ddeeff;padding:20px;}
+h1.main-title{font-family:'Orbitron',monospace;text-align:center;font-size:28px;color:#00c8ff;letter-spacing:4px;margin:20px 0 30px;text-shadow:0 0 20px rgba(0,200,255,.5);}
+.slide{width:960px;height:540px;margin:0 auto 30px;background:linear-gradient(135deg,#080f1e,#0d1a30);border:1px solid rgba(0,200,255,.3);border-radius:14px;padding:48px 60px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
+.slide::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#00c8ff,transparent);}
+.slide.cover{background:linear-gradient(135deg,#040d1a,#0a1d3d);border-color:rgba(0,200,255,.6);}
+.slide.cover::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,rgba(200,0,255,.6),transparent);}
+.snum{font-size:10px;letter-spacing:3px;color:rgba(0,200,255,.4);margin-bottom:12px;}
+h2{font-family:'Orbitron',monospace;font-size:30px;color:#00c8ff;margin-bottom:20px;font-weight:700;text-shadow:0 0 15px rgba(0,200,255,.4);}
+h2.cover-h{font-size:42px;text-align:center;}
+ul{list-style:none;}
+li{padding:9px 0 9px 20px;font-size:18px;color:#c8e8ff;border-left:3px solid rgba(0,200,255,.35);margin:5px 0;position:relative;}
+li::before{content:'▸';position:absolute;left:-2px;top:9px;font-size:12px;color:#00c8ff;}
+.actions{text-align:center;margin:10px 0 30px;}
+.btn{display:inline-block;padding:12px 30px;background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.35);color:#00c8ff;border-radius:6px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:16px;letter-spacing:2px;margin:0 8px;text-decoration:none;}
+.btn:hover{background:rgba(0,200,255,.25);}
+@media print{body{background:#fff}.slide{border:1px solid #ccc;background:#fff!important;break-after:page}.slide::before,.slide::after{display:none}h2,h1.main-title{color:#003366!important;text-shadow:none!important}li{color:#333!important}li::before{color:#003366!important}.actions{display:none}}
+</style></head><body>
+<h1 class="main-title">◈ ${topic.toUpperCase()} ◈</h1>
+<div class="actions"><button class="btn" onclick="window.print()">⬇ Save as PDF</button></div>`;
+
+  slides.forEach((s,i)=>{
+    const lines=s.trim().split('\n').filter(l=>l.trim());
+    const title=lines[0].trim().replace(/^[\-\*]\s*/,'');
+    const bullets=lines.slice(1).filter(l=>/^[\-\*]/.test(l.trim())).map(l=>l.replace(/^[\-\*]\s*/,''));
+    html+=`<div class="slide${i===0?' cover':''}"><div class="snum">SLIDE ${i+1} / ${slides.length}</div>`;
+    html+=`<h2 class="${i===0?'cover-h':''}">${title}</h2>`;
+    if(bullets.length) html+=`<ul>${bullets.map(b=>`<li>${b}</li>`).join('')}</ul>`;
+    html+=`</div>`;
+  });
+
+  html+=`<div class="actions"><button class="btn" onclick="window.print()">⬇ Save as PDF</button></div>
+<p style="text-align:center;font-size:11px;color:rgba(0,200,255,.3);letter-spacing:2px;margin-bottom:20px;">MIKASA AI — PRESENTATION GENERATOR</p>
+</body></html>`;
+
+  const blob=new Blob([html],{type:'text/html'});
+  window.open(URL.createObjectURL(blob),'_blank');
+  addMsg(`Presentation on <strong>"${topic}"</strong> is ready! ${slides.length} slides generated.<br><br>A new tab just opened. Press <strong>Ctrl+P → Save as PDF</strong> to download as a .pdf file.`,'ai');
+  speak(`Your presentation on ${topic} is ready with ${slides.length} slides. Check the new tab and press control P to save as PDF.`);
+}
+
+// ---- VOICE ----
+function speak(text) {
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,'').substring(0,400));
+  u.rate=.92; u.pitch=.88; u.volume=1;
+  const vs=window.speechSynthesis.getVoices();
+  const v=vs.find(v=>v.name.includes('Google')&&v.lang.startsWith('en'))||vs.find(v=>v.lang.startsWith('en-US'))||vs[0];
+  if(v) u.voice=v;
+  document.getElementById('vstatus').textContent='Speaking...';
+  u.onend=()=>document.getElementById('vstatus').textContent='Ready';
+  window.speechSynthesis.speak(u);
+}
+
+function toggleVoice() {
+  isListening ? stopListening() : startListening();
+}
+
+function startListening() {
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){addMsg("Voice recognition needs Chrome or Edge browser.",'ai');return;}
+  recognition=new SR(); recognition.lang='en-IN'; recognition.continuous=false; recognition.interimResults=false;
+  recognition.onstart=()=>{isListening=true;document.getElementById('vbtn').classList.add('listening');document.getElementById('vstatus').textContent='Listening...';};
+  recognition.onresult=e=>{const t=e.results[0][0].transcript;document.getElementById('minput').value=t;sendMsg();};
+  recognition.onerror=recognition.onend=()=>stopListening();
+  recognition.start();
+  navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{
+    audioCtx=new AudioContext(); analyser=audioCtx.createAnalyser(); analyser.fftSize=256;
+    dataArray=new Uint8Array(analyser.frequencyBinCount);
+    audioCtx.createMediaStreamSource(s).connect(analyser);
+  }).catch(()=>{});
+}
+
+function stopListening() {
+  isListening=false;
+  if(recognition){try{recognition.stop();}catch(e){}recognition=null;}
+  if(audioCtx){audioCtx.close();audioCtx=null;analyser=null;dataArray=null;}
+  document.getElementById('vbtn').classList.remove('listening');
+  document.getElementById('vstatus').textContent='Ready';
+}
+
+function quickCmd(cmd){document.getElementById('minput').value=cmd;sendMsg();}
+
+function clearChat(){
+  document.getElementById('chat').innerHTML='';
+  addMsg("Chat cleared. Ready for your next command.",'ai');
+  speak("Chat cleared.");
+}
+
+function setMode(mode,btn){
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const inp=document.getElementById('minput');
+  const hints={chat:"Ask Mikasa anything...",web:"Say: open youtube.com",ppt:"Say: build ppt on [topic]",status:""};
+  inp.placeholder=hints[mode]||"Ask Mikasa anything...";
+  if(mode==='status') quickCmd('system status');
+  else inp.focus();
+}
+
+// ---- GREET ----
+window.addEventListener('load',()=>{
+  setTimeout(()=>speak("Hello! I am MIKASA, your personal AI assistant. Link your free Groq API key to activate my full capabilities."),1200);
+});
+</script>
+</body>
+</html>
